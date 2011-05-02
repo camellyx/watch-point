@@ -1,9 +1,6 @@
 #include "page_table_wp.h"
 #include <iostream>
 
-#define		PAGE_OFFSET		12		//assuming page size = 4 KB
-#define		PAGE_SIZE		(1<<12)
-
 using namespace std;
 
 /*
@@ -15,59 +12,62 @@ using namespace std;
  */
 template<class ADDRESS, class FLAGS>
 WatchPoint_PT<ADDRESS, FLAGS>::WatchPoint_PT() {
-	watchpoint_t<ADDRESS, FLAGS> temp;
-	temp.start_addr = 0;
-	temp.end_addr = -1;
-	temp.flags = 0;
-	wp.push_back(temp);
+	for (int i=0;i<BIT_MAP_NUMBER;i++)
+		bit_map[i] = 0;
 }
 
 template<class ADDRESS, class FLAGS>
 WatchPoint_PT<ADDRESS, FLAGS>::~WatchPoint_PT() {
 }
 
-/*
- * Below 3 wp fault detector all utilize the general_fault() function,
- * with different detection flags
- */
 template<class ADDRESS, class FLAGS>
-bool WatchPoint_PT<ADDRESS, FLAGS>::watch_fault(ADDRESS start_addr, ADDRESS end_addr) {
-	return general_fault(start_addr, end_addr, WA_READ|WA_WRITE);
-}
-
-template<class ADDRESS, class FLAGS>
-bool WatchPoint_PT<ADDRESS, FLAGS>::read_fault(ADDRESS start_addr, ADDRESS end_addr) {
-	return general_fault(start_addr, end_addr, WA_READ);
-}
-
-template<class ADDRESS, class FLAGS>
-bool WatchPoint_PT<ADDRESS, FLAGS>::write_fault(ADDRESS start_addr, ADDRESS end_addr) {
-	return general_fault(start_addr, end_addr, WA_WRITE);
-}
-
-template<class ADDRESS, class FLAGS>
-bool WatchPoint_PT<ADDRESS, FLAGS>::general_fault(ADDRESS start_addr, ADDRESS end_addr, FLAGS target_flags) {
-	wp_iter = search_address (start_addr, wp);
-	while (wp_iter != wp.end() && end_addr > wp_iter->end_addr) {
-		if (wp_iter->flags & target_flags)
-			return true;
-		wp_iter++;
+void WatchPoint_PT<ADDRESS, FLAGS>::watch_print() {
+	cout <<"Start printing watchpoints..."<<endl;
+	for (ADDRESS i=0;i<PAGE_NUMBER;i++) {
+		if (bit_map[i>>3] & (1<<(i&0x7)) )
+			cout <<"page number "<<i<<" is being watched."<<endl;
 	}
-	return ( (wp_iter != wp.end() ) && (wp_iter->flags & target_flags) );
-}
-
-template<class ADDRESS, class FLAGS>
-void WatchPoint_PT<ADDRESS, FLAGS>::wp_operation(ADDRESS start_addr, ADDRESS end_addr,
-		FLAGS target_flags, bool (*flag_test)(FLAGS &x, FLAGS &y),
-		FLAGS (*flag_op)(FLAGS &x, FLAGS &y) ) {
-	/*
-	 * insert_t is used for keeping temp data before being inserted into wp.
-	 */
-	watchpoint_t<ADDRESS, FLAGS> insert_t;
-	/*
-	 * The first search must fall into a range either tagged or not.
-	 */
-	wp_iter = search_address (start_addr, wp);
-	
 	return;
 }
+
+template<class ADDRESS, class FLAGS>
+bool WatchPoint_PT<ADDRESS, FLAGS>::watch_fault(ADDRESS start_addr, ADDRESS end_addr) {
+	ADDRESS page_number_start = (start_addr>>PAGE_OFFSET_LENGTH);
+	ADDRESS page_number_end = (end_addr>>PAGE_OFFSET_LENGTH);
+	for (ADDRESS i=page_number_start;i<=page_number_end;i++) {
+		if (bit_map[i>>BIT_MAP_OFFSET_LENGTH] & (1<<(i&0x7)) )
+			return true;
+	}
+	return false;
+}
+
+template<class ADDRESS, class FLAGS>
+void WatchPoint_PT<ADDRESS, FLAGS>::add_watchpoint(ADDRESS start_addr, ADDRESS end_addr, FLAGS target_flags) {
+	if (target_flags) {
+		ADDRESS page_number_start = (start_addr>>PAGE_OFFSET_LENGTH);
+		ADDRESS page_number_end = (end_addr>>PAGE_OFFSET_LENGTH);
+		for (ADDRESS i=page_number_start;i<=page_number_end;i++)
+			bit_map[i>>BIT_MAP_OFFSET_LENGTH] |= (1<<(i&0x7));
+	}
+	return;
+}
+
+template<class ADDRESS, class FLAGS>
+void WatchPoint_PT<ADDRESS, FLAGS>::rm_watchpoint(ADDRESS start_addr, ADDRESS end_addr, WatchPoint<ADDRESS, FLAGS> &wp) {
+	ADDRESS page_number_start = (start_addr>>PAGE_OFFSET_LENGTH);
+	ADDRESS page_number_end = (end_addr>>PAGE_OFFSET_LENGTH);
+	for (ADDRESS i=page_number_start;i<=page_number_end;i++) {
+		if (!check_page_fault(i, wp))
+			bit_map[i>>BIT_MAP_OFFSET_LENGTH] &= ~(1<<(i&0x7));
+	}
+	return;
+}
+
+template<class ADDRESS, class FLAGS>
+bool WatchPoint_PT<ADDRESS, FLAGS>::check_page_fault(ADDRESS page_number, WatchPoint<ADDRESS, FLAGS> &wp) {
+	ADDRESS start_addr = (page_number<<PAGE_OFFSET_LENGTH);
+	ADDRESS end_addr = ((page_number+1)<<PAGE_OFFSET_LENGTH)-1;
+	return wp.watch_fault(start_addr, end_addr);
+}
+
+

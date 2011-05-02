@@ -26,21 +26,21 @@ public:
 	void	rm_write	(ADDRESS start_addr, ADDRESS end_addr);
 */
 
-	virtual	bool	general_fault	(ADDRESS start_addr, ADDRESS end_addr, FLAGS target_flags);
-	virtual	bool	watch_fault		(ADDRESS start_addr, ADDRESS end_addr);
-	virtual	bool	read_fault		(ADDRESS start_addr, ADDRESS end_addr);
-	virtual	bool	write_fault		(ADDRESS start_addr, ADDRESS end_addr);
+	bool	general_fault	(ADDRESS start_addr, ADDRESS end_addr, FLAGS target_flags);
+	bool	watch_fault		(ADDRESS start_addr, ADDRESS end_addr);
+	bool	read_fault		(ADDRESS start_addr, ADDRESS end_addr);
+	bool	write_fault		(ADDRESS start_addr, ADDRESS end_addr);
 	
 	typename std::deque<watchpoint_t<ADDRESS, FLAGS> >::iterator
-					search_address	(ADDRESS start_addr, std::deque<watchpoint_t<ADDRESS, FLAGS> > &wp);
+			search_address	(ADDRESS start_addr, std::deque<watchpoint_t<ADDRESS, FLAGS> > &wp);
 
-	virtual	void	watch_print();
+	void	watch_print();
 //private:
 
-	virtual	void	wp_operation	(ADDRESS start_addr, ADDRESS end_addr, FLAGS target_flags,
-					 bool (*flag_test)(FLAGS &x, FLAGS &y), FLAGS (*flag_op)(FLAGS &x, FLAGS &y) );
-	virtual	void	add_watchpoint	(ADDRESS start_addr, ADDRESS end_addr, FLAGS target_flags);
-	virtual	void	rm_watchpoint	(ADDRESS start_addr, ADDRESS end_addr, FLAGS target_flags);
+	void	wp_operation	(ADDRESS start_addr, ADDRESS end_addr, FLAGS target_flags,
+			 bool (*flag_test)(FLAGS &x, FLAGS &y), FLAGS (*flag_op)(FLAGS &x, FLAGS &y) );
+	void	add_watchpoint	(ADDRESS start_addr, ADDRESS end_addr, FLAGS target_flags);
+	void	rm_watchpoint	(ADDRESS start_addr, ADDRESS end_addr, FLAGS target_flags);
 
 	/*
 	 * wp		is the container to hold all the ranges for watchpoint structure.
